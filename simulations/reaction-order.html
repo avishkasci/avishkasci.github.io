@@ -1,61 +1,187 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Reaction Order Visualizer</title>
+  <title>Reaction Kinetics Simulator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body{
+      margin:0;
+      background:#0b0b0b;
+      color:#e0e0e0;
+      font-family:"Segoe UI",sans-serif;
+      text-align:center;
+    }
+
+    h1{margin:10px;}
+
+    .container{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:20px;
+      padding:20px;
+    }
+
+    .panel{
+      max-width:500px;
+      padding:15px;
+      background:#121212;
+      border:1px solid #222;
+    }
+
+    input,select{width:100%;margin:5px 0;}
+
+    canvas{background:#fff;}
+  </style>
 </head>
 
-<body style="background:#0b0b0b;color:white;text-align:center;font-family:Arial">
+<body>
 
-<h1>Reaction Order Visualizer</h1>
+<h1>Gas Phase Reaction Kinetics</h1>
 
-<label>Initial concentration:</label>
-<input type="range" id="A0" min="0.1" max="2" step="0.1" value="1"><br><br>
+<div class="panel">
+<label>Initial concentration</label>
+<input type="range" id="A0" min="0.5" max="2" step="0.1" value="1">
 
-<label>Rate constant k:</label>
-<input type="range" id="k" min="0.1" max="2" step="0.1" value="1"><br><br>
+<label>Rate constant</label>
+<input type="range" id="k" min="0.1" max="2" step="0.1" value="1">
 
+<label>Reaction probability</label>
+<input type="range" id="prob" min="0" max="1" step="0.01" value="0.02">
+
+<label>Reaction order</label>
 <select id="order">
-  <option value="0">Zero Order</option>
-  <option value="1">First Order</option>
-  <option value="2">Second Order</option>
+<option value="0">Zero</option>
+<option value="1">First</option>
+<option value="2">Second</option>
 </select>
+</div>
 
-<canvas id="graph" width="400" height="300" style="background:white;margin-top:20px;"></canvas>
+<div class="container">
+
+<canvas id="gas" width="400" height="300"></canvas>
+<canvas id="graph" width="400" height="300"></canvas>
+
+</div>
 
 <script>
-let canvas = document.getElementById("graph");
-let ctx = canvas.getContext("2d");
+let gas=document.getElementById("gas");
+let gctx=gas.getContext("2d");
 
-function draw(){
+let graph=document.getElementById("graph");
+let ctx=graph.getContext("2d");
+
+let particles=[];
+let time=0;
+
+function initParticles(){
+  particles=[];
+  let N=80;
+
+  for(let i=0;i<N;i++){
+    particles.push({
+      x:Math.random()*380+10,
+      y:Math.random()*280+10,
+      vx:(Math.random()-0.5)*2,
+      vy:(Math.random()-0.5)*2,
+      alive:true
+    });
+  }
+  time=0;
+}
+
+initParticles();
+
+document.querySelectorAll("input,select").forEach(el=>{
+  el.oninput=initParticles;
+});
+
+let history=[];
+
+function drawAxis(){
+  ctx.strokeStyle="#000";
+  ctx.beginPath();
+  ctx.moveTo(40,260);
+  ctx.lineTo(380,260);
+  ctx.moveTo(40,260);
+  ctx.lineTo(40,20);
+  ctx.stroke();
+
+  ctx.fillStyle="#000";
+  ctx.fillText("Time",180,290);
+}
+
+function update(){
+
+  let A0=parseFloat(document.getElementById("A0").value);
+  let k=parseFloat(document.getElementById("k").value);
+  let prob=parseFloat(document.getElementById("prob").value);
+  let order=document.getElementById("order").value;
+
+  // Gas simulation
+  gctx.clearRect(0,0,400,300);
+
+  let aliveCount=0;
+
+  for(let i=0;i<particles.length;i++){
+    let p=particles[i];
+    if(!p.alive) continue;
+
+    aliveCount++;
+
+    p.x+=p.vx;
+    p.y+=p.vy;
+
+    if(p.x<5||p.x>395) p.vx*=-1;
+    if(p.y<5||p.y>295) p.vy*=-1;
+
+    for(let j=i+1;j<particles.length;j++){
+      let q=particles[j];
+      if(!q.alive) continue;
+
+      let dx=p.x-q.x;
+      let dy=p.y-q.y;
+
+      if(dx*dx+dy*dy<25){
+        if(Math.random()<prob){
+          q.alive=false;
+        }
+      }
+    }
+
+    gctx.beginPath();
+    gctx.arc(p.x,p.y,3,0,Math.PI*2);
+    gctx.fillStyle="#0077ff";
+    gctx.fill();
+  }
+
+  // concentration from molecules
+  let conc=A0*(aliveCount/particles.length);
+
+  history.push(conc);
+
+  // Graph
   ctx.clearRect(0,0,400,300);
-
-  let A0 = parseFloat(document.getElementById("A0").value);
-  let k = parseFloat(document.getElementById("k").value);
-  let order = document.getElementById("order").value;
+  drawAxis();
 
   ctx.beginPath();
+  ctx.strokeStyle="#0077ff";
 
-  for(let t=0;t<10;t+=0.1){
-    let A;
+  for(let i=0;i<history.length;i++){
+    let x=40+i*2;
+    let y=260-history[i]*150;
 
-    if(order==0) A = A0 - k*t;
-    if(order==1) A = A0*Math.exp(-k*t);
-    if(order==2) A = A0/(1 + A0*k*t);
-
-    if(A<0) A=0;
-
-    let x = t*40;
-    let y = 300 - A*200;
-
-    if(t==0) ctx.moveTo(x,y);
+    if(i==0) ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   }
 
   ctx.stroke();
+
+  time++;
 }
 
-setInterval(draw,100);
+setInterval(update,40);
 </script>
 
 </body>
