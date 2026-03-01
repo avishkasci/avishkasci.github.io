@@ -1,71 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Reaction Kinetics Simulator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reaction Kinetics Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body{
-      margin:0;
-      background:#0b0b0b;
-      color:#e0e0e0;
-      font-family:"Segoe UI",sans-serif;
-      text-align:center;
-    }
+<style>
+body{
+  margin:0;
+  font-family:"Segoe UI",sans-serif;
+  background:#0b0b0b;
+  color:#e0e0e0;
+}
+header{text-align:center;padding:15px;}
 
-    h1{margin:10px;}
+.wrapper{max-width:1200px;margin:auto;padding:10px;}
 
-    .container{
-      display:flex;
-      flex-wrap:wrap;
-      justify-content:center;
-      gap:20px;
-      padding:20px;
-    }
+.controls{
+  background:#121212;
+  padding:20px;
+  border-radius:10px;
+  border:1px solid #222;
+  margin-bottom:20px;
+}
 
-    .panel{
-      max-width:500px;
-      padding:15px;
-      background:#121212;
-      border:1px solid #222;
-    }
+label{font-size:0.85rem;}
+.value{float:right;color:#9cc9ff;}
 
-    input,select{width:100%;margin:5px 0;}
+.sim{
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px;
+  justify-content:center;
+}
 
-    canvas{background:#fff;}
-  </style>
+canvas{
+  background:white;
+  border-radius:6px;
+}
+
+.legend{
+  font-size:0.8rem;
+  margin-top:10px;
+}
+
+@media(max-width:800px){
+  .sim{flex-direction:column;}
+}
+</style>
 </head>
 
 <body>
 
-<h1>Gas Phase Reaction Kinetics</h1>
+<header>
+<h2>Gas Phase Reaction Kinetics</h2>
+</header>
 
-<div class="panel">
-<label>Initial concentration</label>
+<div class="wrapper">
+
+<div class="controls">
+
+<label>Initial concentration
+<span class="value" id="A0v"></span></label>
 <input type="range" id="A0" min="0.5" max="2" step="0.1" value="1">
 
-<label>Rate constant</label>
+<label>Rate constant k
+<span class="value" id="kv"></span></label>
 <input type="range" id="k" min="0.1" max="2" step="0.1" value="1">
 
-<label>Reaction probability</label>
-<input type="range" id="prob" min="0" max="1" step="0.01" value="0.02">
+<label>Temperature
+<span class="value" id="Tv"></span></label>
+<input type="range" id="T" min="0.5" max="3" step="0.1" value="1">
 
 <label>Reaction order</label>
 <select id="order">
 <option value="0">Zero</option>
-<option value="1">First</option>
+<option value="1" selected>First</option>
 <option value="2">Second</option>
 </select>
+
 </div>
 
-<div class="container">
+<div class="sim">
+<canvas id="gas" width="550" height="340"></canvas>
+<canvas id="graph" width="550" height="340"></canvas>
+</div>
 
-<canvas id="gas" width="400" height="300"></canvas>
-<canvas id="graph" width="400" height="300"></canvas>
+<div class="legend">
+Blue = Reactant A, Red = Reactant B, Gray = Products
+</div>
 
 </div>
 
 <script>
+
 let gas=document.getElementById("gas");
 let gctx=gas.getContext("2d");
 
@@ -73,151 +100,156 @@ let graph=document.getElementById("graph");
 let ctx=graph.getContext("2d");
 
 let particles=[];
-let time=0;
-
-function initParticles(){
-  particles=[];
-  let N=80;
-
-  for(let i=0;i<N;i++){
-    particles.push({
-      x:Math.random()*380+10,
-      y:Math.random()*280+10,
-      vx:(Math.random()-0.5)*2,
-      vy:(Math.random()-0.5)*2,
-      alive:true
-    });
-  }
-  time=0;
-}
-
-initParticles();
-
-document.querySelectorAll("input,select").forEach(el=>{
-  el.oninput=initParticles;
-});
-
 let history=[];
 
-function drawAxis(){
+/* ===== DISPLAY ===== */
+function showValues(){
+  A0v.innerText=A0.value;
+  kv.innerText=k.value;
+  Tv.innerText=T.value;
+}
+
+/* ===== SPEED DISTRIBUTION ===== */
+function mbSpeed(T){
+  return Math.sqrt(-Math.log(Math.random()))*T;
+}
+
+/* ===== INITIALIZE ===== */
+function init(){
+  particles=[];
+  history=[];
+
+  let N=Math.floor(120*parseFloat(A0.value));
+
+  for(let i=0;i<N;i++){
+    let speed=mbSpeed(parseFloat(T.value));
+
+    particles.push({
+      type: i<N/2 ? "A" : "B",
+      x:Math.random()*530+10,
+      y:Math.random()*320+10,
+      vx:(Math.random()-0.5)*speed,
+      vy:(Math.random()-0.5)*speed
+    });
+  }
+}
+
+document.querySelectorAll("input,select")
+.forEach(el=>el.oninput=()=>{
+  showValues();
+  init();
+});
+
+showValues();
+init();
+
+/* ===== GRAPH ===== */
+function axis(){
   ctx.strokeStyle="#000";
   ctx.beginPath();
-  ctx.moveTo(40,260);
-  ctx.lineTo(380,260);
-  ctx.moveTo(40,260);
+  ctx.moveTo(40,300);
+  ctx.lineTo(520,300);
+  ctx.moveTo(40,300);
   ctx.lineTo(40,20);
   ctx.stroke();
 
-  ctx.fillStyle="#000";
-  ctx.fillText("Time",180,290);
+  ctx.fillText("Time",250,325);
+
+  ctx.save();
+  ctx.translate(10,160);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Concentration",0,0);
+  ctx.restore();
 }
 
+/* ===== SIMULATION ===== */
 function update(){
 
-  // Reaction mechanisms based on order
+  let kf=parseFloat(k.value);
+  let Tval=parseFloat(T.value);
+  let orderf=order.value;
 
-if(order == 0){
-  if(Math.random() < k*0.01){
-    let alive = particles.filter(p=>p.alive);
-    if(alive.length > 0){
-      alive[Math.floor(Math.random()*alive.length)].alive = false;
+  gctx.clearRect(0,0,550,340);
+
+  let aliveA=particles.filter(p=>p.type=="A").length;
+  let conc=aliveA/(particles.length/2);
+
+  /* ===== TRUE RATE LAW ===== */
+  let rate=0;
+
+  if(orderf==0){
+    rate=kf;
+  }
+
+  if(orderf==1){
+    rate=kf*conc;
+  }
+
+  if(orderf==2){
+    rate=kf*conc*conc;
+  }
+
+  let reactCount=Math.floor(rate*1.5);
+
+  for(let n=0;n<reactCount;n++){
+    let alive=particles.filter(p=>p.type=="A");
+
+    if(alive.length){
+      let r=alive[Math.floor(Math.random()*alive.length)];
+      r.type="P";
     }
   }
-}
 
-if(order == 1){
-  for(let i=0;i<particles.length;i++){
-    let p = particles[i];
-    if(p.alive && Math.random() < k*0.005){
-      p.alive = false;
+  /* ===== MOTION ===== */
+  let countA=0;
+
+  for(let p of particles){
+
+    p.x+=p.vx*Tval;
+    p.y+=p.vy*Tval;
+
+    if(p.x<5||p.x>545) p.vx*=-1;
+    if(p.y<5||p.y>335) p.vy*=-1;
+
+    if(p.type=="A"){
+      countA++;
+      gctx.fillStyle="#0077ff";
     }
-  }
-}
-
-if(order == 2){
-  for(let i=0;i<particles.length;i++){
-    let p = particles[i];
-    if(!p.alive) continue;
-
-    for(let j=i+1;j<particles.length;j++){
-      let q = particles[j];
-      if(!q.alive) continue;
-
-      let dx = p.x - q.x;
-      let dy = p.y - q.y;
-
-      if(dx*dx + dy*dy < 25){
-        if(Math.random() < prob){
-          q.alive = false;
-        }
-      }
+    else if(p.type=="B"){
+      gctx.fillStyle="#ff4444";
     }
-  }
-}e;
-
-  // Gas simulation
-  gctx.clearRect(0,0,400,300);
-
-  let aliveCount=0;
-
-  for(let i=0;i<particles.length;i++){
-    let p=particles[i];
-    if(!p.alive) continue;
-
-    aliveCount++;
-
-    p.x+=p.vx;
-    p.y+=p.vy;
-
-    if(p.x<5||p.x>395) p.vx*=-1;
-    if(p.y<5||p.y>295) p.vy*=-1;
-
-    for(let j=i+1;j<particles.length;j++){
-      let q=particles[j];
-      if(!q.alive) continue;
-
-      let dx=p.x-q.x;
-      let dy=p.y-q.y;
-
-      if(dx*dx+dy*dy<25){
-        if(Math.random()<prob){
-          q.alive=false;
-        }
-      }
+    else{
+      gctx.fillStyle="#888";
     }
 
     gctx.beginPath();
     gctx.arc(p.x,p.y,3,0,Math.PI*2);
-    gctx.fillStyle="#0077ff";
     gctx.fill();
   }
 
-  // concentration from molecules
-  let conc=A0*(aliveCount/particles.length);
+  let newConc=countA/(particles.length/2);
+  history.push(newConc);
 
-  history.push(conc);
-
-  // Graph
-  ctx.clearRect(0,0,400,300);
-  drawAxis();
+  ctx.clearRect(0,0,550,340);
+  axis();
 
   ctx.beginPath();
   ctx.strokeStyle="#0077ff";
+  ctx.lineWidth=2;
 
   for(let i=0;i<history.length;i++){
     let x=40+i*2;
-    let y=260-history[i]*150;
+    let y=300-history[i]*250;
 
     if(i==0) ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   }
 
   ctx.stroke();
-
-  time++;
 }
 
 setInterval(update,40);
+
 </script>
 
 </body>
