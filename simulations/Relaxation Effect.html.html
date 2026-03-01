@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ion Solvation & Conductivity – Interactive Simulation</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #111520;
+    --panel:     #161b27;
+    --border:    #1e2740;
+    --accent:    #00d4ff;
+    --accent2:   #ff6b35;
+    --green:     #39ff7e;
+    --purple:    #b47eff;
+    --text:      #c8d6f0;
+    --muted:     #5a6a8a;
+    --ion-pos:   #ff4f4f;
+    --ion-neg:   #4fa8ff;
+    --dipole:    #aad4ff;
+    --font-mono: 'Courier New', monospace;
+  }
+
+  html, body { height: 100%; overflow-x: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: normal;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  header .subtitle {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  header .spacer { flex: 1; }
+
+  /* ── Step tabs ── */
+  .steps {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .step-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+  }
+  .step-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .step-btn.active {
+    background: #0e1f30;
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px rgba(0,212,255,0.15);
+  }
+
+  /* ── Main layout ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px;
+    min-width: 200px;
+    max-width: 280px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .theory-box {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .theory-box h2 {
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .theory-box p {
+    font-size: 0.78rem;
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: 6px;
+  }
+  .theory-box .highlight {
+    color: var(--green);
+    font-style: italic;
+  }
+
+  .controls {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .ctrl-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .ctrl-group label span { color: var(--accent); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,212,255,0.5);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+  }
+  .toggle {
+    position: relative;
+    width: 36px; height: 18px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle .track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle .track::after {
+    content:'';
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--muted);
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle input:checked + .track { background: #0e2a1e; }
+  .toggle input:checked + .track::after {
+    transform: translateX(18px);
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(57,255,126,0.5);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Metrics ── */
+  .metrics {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+  .metrics h3 {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+  }
+  .metric .name { color: var(--muted); }
+  .metric .val  { color: var(--green); }
+
+  /* ── Canvas area ── */
+  .canvas-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-width: 0;
+    background: radial-gradient(ellipse at 50% 50%, #0d1525 0%, #080b12 100%);
+  }
+
+  #mainCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  #mainCanvas:active { cursor: grabbing; }
+
+  /* ── Field indicator overlay ── */
+  .field-indicator {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .field-indicator.visible { opacity: 1; }
+  .field-arrow {
+    width: 50px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent2));
+    position: relative;
+  }
+  .field-arrow::after {
+    content:'';
+    position: absolute;
+    right: -1px; top: -3px;
+    border-left: 7px solid var(--accent2);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+
+  /* ── Bottom bar ── */
+  .bottom-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .bottom-bar .hint { color: var(--accent); }
+
+  /* ── Legend ── */
+  .legend {
+    position: absolute;
+    bottom: 50px;
+    left: 14px;
+    background: rgba(17,21,32,0.85);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .sidebar { width: 100%; max-width: 100%; min-height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+    .layout { flex-direction: column; }
+    header h1 { font-size: 0.9rem; }
+    .steps { gap: 3px; }
+    .step-btn { padding: 4px 8px; font-size: 0.65rem; }
+    .legend { font-size: 0.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div>
+    <h1>⚗ Ion Solvation &amp; Ionic Conductivity</h1>
+    <div class="subtitle">Physical Chemistry · Undergraduate Simulation</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="steps">
+    <button class="step-btn active" onclick="setStep(1)">1 · Hydration</button>
+    <button class="step-btn" onclick="setStep(2)">2 · Ionic Atmosphere</button>
+    <button class="step-btn" onclick="setStep(3)">3 · Relaxation</button>
+    <button class="step-btn" onclick="setStep(4)">4 · Electrophoretic</button>
+  </div>
+</header>
+
+<!-- ── Main Layout ── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="theory-box" id="theoryBox">
+      <h2 id="theoryTitle">Step 1 · Hydration Shell</h2>
+      <p id="theoryText1"></p>
+      <p id="theoryText2"></p>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-group">
+        <label>Electric Field <span id="fieldVal">0.0</span></label>
+        <input type="range" id="fieldSlider" min="0" max="100" value="0" oninput="onFieldChange()">
+      </div>
+      <div class="ctrl-group">
+        <label>Concentration <span id="concVal">0.10</span> M</label>
+        <input type="range" id="concSlider" min="1" max="100" value="10" oninput="onConcChange()">
+      </div>
+      <div class="ctrl-group">
+        <label>Slow Motion <span id="speedVal">1.0</span>×</label>
+        <input type="range" id="speedSlider" min="1" max="20" value="10" oninput="onSpeedChange()">
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="infiniteToggle" onchange="onInfiniteToggle()">
+          <div class="track"></div>
+        </label>
+        <span>Infinite Dilution</span>
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="labelsToggle" checked onchange="sim.showLabels=this.checked">
+          <div class="track"></div>
+        </label>
+        <span>Show Labels</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
+        <button class="btn danger" onclick="resetSim()">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <h3>Live Metrics</h3>
+      <div class="metric"><span class="name">Conductivity</span><span class="val" id="mCond">—</span></div>
+      <div class="metric"><span class="name">Ion Velocity</span><span class="val" id="mVel">—</span></div>
+      <div class="metric"><span class="name">Atm. Lag</span><span class="val" id="mLag">—</span></div>
+      <div class="metric"><span class="name">Debye Length</span><span class="val" id="mDebye">—</span></div>
+      <div class="metric"><span class="name">Shell Radius</span><span class="val" id="mShell">—</span></div>
+    </div>
+  </aside>
+
+  <!-- Canvas area -->
+  <div class="canvas-wrap">
+    <div class="field-indicator" id="fieldIndicator">
+      ⟶ E-field
+      <div class="field-arrow"></div>
+    </div>
+
+    <canvas id="mainCanvas"></canvas>
+
+    <!-- Legend -->
+    <div class="legend" id="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4f4f;box-shadow:0 0 5px #ff4f4f"></div>Central Ion (+)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4fa8ff;box-shadow:0 0 5px #4fa8ff"></div>Counter-ions (−)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(100,160,255,0.5);border:1px solid #4fa8ff"></div>Water dipoles</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#39ff7e;box-shadow:0 0 5px #39ff7e;opacity:0.7"></div>Primary shell</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#b47eff;opacity:0.4"></div>Secondary region</div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <span class="hint">💡 Drag the central ion to see the atmosphere lag.</span>
+  <span>Step <span id="stepIndicator">1</span>/4</span>
+  <span>Lec 2 · Water as Solvent &amp; Ion Conductivity</span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   ELECTROCHEMISTRY SIMULATION
+   Topics: Solvation, Ionic Atmosphere, Relaxation, Electrophoretic
+═══════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('mainCanvas');
+const ctx    = canvas.getContext('2d');
+
+/* ── Theory content per step ── */
+const THEORY = [
+  {
+    title: 'Step 1 · Hydration Shell',
+    t1: 'Water molecules act as electric dipoles. Around a cation (+), their negative oxygen ends point inward. This immobilizes the nearest water molecules — forming the primary (structure-enhanced) hydration shell.',
+    t2: 'Further out, an intermediate secondary (structure-broken) region exists, then finally the unperturbed bulk water structure is re-attained.',
+  },
+  {
+    title: 'Step 2 · Ionic Atmosphere',
+    t1: 'Each ion is surrounded by an excess of counter-ions (Debye–Hückel theory). At equilibrium this ionic atmosphere is perfectly symmetric — the central ion feels no net force from it.',
+    t2: 'Higher concentration → smaller Debye length κ⁻¹ → more compact atmosphere. Use the Concentration slider to observe this.',
+  },
+  {
+    title: 'Step 3 · Relaxation Effect',
+    t1: 'Under an electric field the ion moves, but its atmosphere takes finite time to reform around the new position. This creates an asymmetric atmosphere lagging behind the ion.',
+    t2: 'The lag generates a restoring electrostatic force opposing ion motion — reducing its drift velocity and therefore the solution\'s conductivity. This is the asymmetry / relaxation effect.',
+  },
+  {
+    title: 'Step 4 · Electrophoretic Effect',
+    t1: 'The ionic atmosphere (net charge opposite to central ion) is also attracted by the applied field — but in the opposite direction. This drags the surrounding solvent backward relative to the ion.',
+    t2: 'The ion must push through an opposing solvent stream, adding a friction/electrophoretic retardation force. At infinite dilution all interionic effects vanish → maximum conductivity (Λ₀).',
+  },
+];
+
+/* ── Simulation state ── */
+const sim = {
+  step: 1,
+  paused: false,
+  infiniteDilution: false,
+  showLabels: true,
+  fieldStrength: 0,          // 0–1
+  concentration: 0.10,       // mol/L
+  timeScale: 1.0,
+  time: 0,
+
+  // Central ion
+  ion: { x: 0, y: 0, vx: 0, vy: 0 },
+  atmCenter: { x: 0, y: 0 },   // atmosphere center (lags)
+
+  // Drag state
+  dragging: false,
+  dragOffX: 0, dragOffY: 0,
+
+  // Physics constants (visual units)
+  get debyeRadius() {
+    if (this.infiniteDilution) return 999;
+    return 60 + 100 / Math.sqrt(this.concentration * 10);
+  },
+  get primaryRadius() { return 32; },
+  get secondaryRadius() { return 58; },
+
+  // Counter-ions for atmosphere visualization
+  counterIons: [],
+
+  // Water dipoles around ion
+  dipoles: [],
+
+  // Electrophoretic backflow arrows
+  backflowPhase: 0,
+
+  // Conductivity (qualitative, 0–1)
+  get conductivity() {
+    if (this.infiniteDilution) return 1.0;
+    const relaxPenalty = Math.min(0.3, this.lag / 80);
+    const concPenalty  = Math.min(0.35, Math.log10(1 + this.concentration * 5) * 0.2);
+    const efPenalty    = this.fieldStrength * 0.08;
+    return Math.max(0.05, 1 - relaxPenalty - concPenalty - efPenalty);
+  },
+  get lag() {
+    const dx = this.ion.x - this.atmCenter.x;
+    const dy = this.ion.y - this.atmCenter.y;
+    return Math.sqrt(dx*dx + dy*dy);
+  },
+  get ionVelocity() {
+    return Math.sqrt(this.ion.vx**2 + this.ion.vy**2);
+  },
+};
+
+/* ── Resize canvas ── */
+function resize() {
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  // Re-center ion on resize
+  sim.ion.x = canvas.width  / 2;
+  sim.ion.y = canvas.height / 2;
+  sim.atmCenter.x = sim.ion.x;
+  sim.atmCenter.y = sim.ion.y;
+  initParticles();
+}
+
+/* ── Init dipoles & counter-ions ── */
+function initParticles() {
+  const cx = sim.ion.x, cy = sim.ion.y;
+  // Water dipoles (fixed angles around primary shell)
+  sim.dipoles = [];
+  const N = 6;
+  for (let i = 0; i < N; i++) {
+    const a = (2*Math.PI/N)*i;
+    sim.dipoles.push({ angle: a, baseAngle: a });
+  }
+
+  // Counter-ions scattered in Debye sphere
+  sim.counterIons = [];
+  const KI = 16;
+  for (let i = 0; i < KI; i++) {
+    const a = Math.random()*2*Math.PI;
+    const r = sim.debyeRadius * (0.4 + 0.6*Math.random());
+    sim.counterIons.push({
+      ox: Math.cos(a)*r, oy: Math.sin(a)*r,  // offset from atmosphere center
+      phase: Math.random()*Math.PI*2,
+      speed: 0.3 + Math.random()*0.4,
+      size: 4 + Math.random()*3,
+    });
+  }
+}
+
+/* ── UI handlers ── */
+function setStep(s) {
+  sim.step = s;
+  document.querySelectorAll('.step-btn').forEach((b,i) => b.classList.toggle('active', i===s-1));
+  document.getElementById('stepIndicator').textContent = s;
+  const th = THEORY[s-1];
+  document.getElementById('theoryTitle').textContent = th.title;
+  document.getElementById('theoryText1').textContent = th.t1;
+  document.getElementById('theoryText2').textContent = th.t2;
+
+  // Auto-adjust for each step
+  if (s === 1) {
+    document.getElementById('fieldSlider').value = 0; onFieldChange();
+    document.getElementById('concSlider').value = 10;  onConcChange();
+  } else if (s === 2) {
+    document.getElementById('fieldSlider').value = 0;  onFieldChange();
+    document.getElementById('concSlider').value = 20;  onConcChange();
+  } else if (s === 3) {
+    document.getElementById('fieldSlider').value = 40; onFieldChange();
+    document.getElementById('concSlider').value = 30;  onConcChange();
+  } else if (s === 4) {
+    document.getElementById('fieldSlider').value = 55; onFieldChange();
+    document.getElementById('concSlider').value = 30;  onConcChange();
+  }
+}
+
+function onFieldChange() {
+  const v = +document.getElementById('fieldSlider').value;
+  sim.fieldStrength = v/100;
+  document.getElementById('fieldVal').textContent = (v/100).toFixed(2);
+  document.getElementById('fieldIndicator').classList.toggle('visible', v > 0);
+}
+function onConcChange() {
+  const v = +document.getElementById('concSlider').value;
+  sim.concentration = v/100;
+  document.getElementById('concVal').textContent = (v/100).toFixed(2);
+}
+function onSpeedChange() {
+  const v = +document.getElementById('speedSlider').value;
+  sim.timeScale = v/10;
+  document.getElementById('speedVal').textContent = (v/10).toFixed(1);
+}
+function onInfiniteToggle() {
+  sim.infiniteDilution = document.getElementById('infiniteToggle').checked;
+}
+function togglePause() {
+  sim.paused = !sim.paused;
+  document.getElementById('pauseBtn').textContent = sim.paused ? '▶ Play' : '⏸ Pause';
+}
+function resetSim() {
+  sim.ion.x = canvas.width/2; sim.ion.y = canvas.height/2;
+  sim.ion.vx = 0; sim.ion.vy = 0;
+  sim.atmCenter.x = sim.ion.x; sim.atmCenter.y = sim.ion.y;
+  sim.time = 0;
+  initParticles();
+}
+
+/* ── Drag ── */
+function getXY(e) {
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return [t.clientX - r.left, t.clientY - r.top];
+}
+function startDrag(e) {
+  const [mx,my] = getXY(e);
+  const dx = mx - sim.ion.x, dy = my - sim.ion.y;
+  if (Math.sqrt(dx*dx+dy*dy) < 40) {
+    sim.dragging = true;
+    sim.dragOffX = dx; sim.dragOffY = dy;
+    e.preventDefault();
+  }
+}
+function moveDrag(e) {
+  if (!sim.dragging) return;
+  const [mx,my] = getXY(e);
+  sim.ion.x = mx - sim.dragOffX;
+  sim.ion.y = my - sim.dragOffY;
+  sim.ion.vx = 0; sim.ion.vy = 0;
+  e.preventDefault();
+}
+function endDrag() { sim.dragging = false; }
+
+canvas.addEventListener('mousedown',  startDrag);
+canvas.addEventListener('mousemove',  moveDrag);
+canvas.addEventListener('mouseup',    endDrag);
+canvas.addEventListener('mouseleave', endDrag);
+canvas.addEventListener('touchstart', startDrag, {passive:false});
+canvas.addEventListener('touchmove',  moveDrag,  {passive:false});
+canvas.addEventListener('touchend',   endDrag);
+
+/* ══════════════════════════════
+   DRAWING HELPERS
+══════════════════════════════ */
+
+function glow(color, blur=15) {
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = blur;
+}
+function noGlow() { ctx.shadowBlur = 0; }
+
+function drawGradientCircle(x,y,r,c1,c2) {
+  const g = ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+}
+
+/* ── Water dipole (single molecule) ── */
+function drawDipole(cx,cy,angle,scale=1) {
+  const r = sim.primaryRadius + 8;
+  const px = cx + Math.cos(angle)*r;
+  const py = cy + Math.sin(angle)*r;
+
+  // Oxygen (larger, toward ion)
+  const ox = px - Math.cos(angle)*7*scale;
+  const oy = py - Math.sin(angle)*7*scale;
+  ctx.fillStyle = 'rgba(80,140,255,0.55)';
+  glow('#4fa8ff', 5);
+  ctx.beginPath(); ctx.arc(ox,oy,5*scale,0,Math.PI*2); ctx.fill();
+
+  // Two hydrogens
+  const hAngle = 0.55;
+  const hDist = 9*scale;
+  for (let s of [-1,1]) {
+    const ha = angle + Math.PI + s*hAngle;
+    const hx = px + Math.cos(ha)*hDist;
+    const hy = py + Math.sin(ha)*hDist;
+    ctx.fillStyle = 'rgba(200,210,255,0.7)';
+    ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.arc(hx,hy,3*scale,0,Math.PI*2); ctx.fill();
+    // bond
+    ctx.strokeStyle='rgba(150,170,220,0.3)';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(hx,hy); ctx.stroke();
+  }
+  noGlow();
+
+  // δ- / δ+ labels
+  if (sim.showLabels) {
+    ctx.font = '9px Georgia';
+    ctx.fillStyle='rgba(100,160,255,0.7)';
+    ctx.fillText('δ−', ox+5, oy-4);
+    ctx.fillStyle='rgba(200,215,255,0.5)';
+    ctx.fillText('δ+', px+Math.cos(angle+Math.PI/2)*12, py+Math.sin(angle+Math.PI/2)*12);
+  }
+}
+
+/* ── Hydration shells ── */
+function drawHydrationShells(cx,cy) {
+  const t = sim.time;
+  const PR = sim.primaryRadius;
+  const SR = sim.secondaryRadius;
+  const DR = sim.debyeRadius;
+
+  // Bulk region (faint)
+  if (!sim.infiniteDilution) {
+    const g3 = ctx.createRadialGradient(cx,cy,SR,cx,cy,DR*0.9);
+    g3.addColorStop(0,'rgba(80,80,180,0.04)');
+    g3.addColorStop(1,'transparent');
+    ctx.fillStyle=g3;
+    ctx.beginPath(); ctx.arc(cx,cy,DR*0.9,0,Math.PI*2); ctx.fill();
+  }
+
+  // Secondary (structure-broken) region
+  const g2 = ctx.createRadialGradient(cx,cy,PR,cx,cy,SR);
+  g2.addColorStop(0,'rgba(180,126,255,0.12)');
+  g2.addColorStop(1,'rgba(180,126,255,0.0)');
+  ctx.fillStyle=g2;
+  ctx.beginPath(); ctx.arc(cx,cy,SR,0,Math.PI*2); ctx.fill();
+
+  // Primary shell
+  glow('#39ff7e', 8);
+  ctx.strokeStyle='rgba(57,255,126,0.35)';
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([4,5]);
+  ctx.beginPath(); ctx.arc(cx,cy,PR,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  noGlow();
+
+  // Secondary ring
+  ctx.strokeStyle='rgba(180,126,255,0.2)';
+  ctx.lineWidth=1;
+  ctx.setLineDash([3,7]);
+  ctx.beginPath(); ctx.arc(cx,cy,SR,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Dipoles in primary shell
+  const Nd = sim.dipoles.length;
+  for (let i=0; i<Nd; i++) {
+    const d = sim.dipoles[i];
+    // Dipoles oscillate slightly
+    const wobble = Math.sin(t*1.5 + i) * 0.04;
+    const displayAngle = d.angle + wobble;
+    drawDipole(cx,cy,displayAngle);
+  }
+
+  // Labels
+  if (sim.showLabels) {
+    ctx.font = '10px var(--font-mono)';
+    ctx.fillStyle='rgba(57,255,126,0.7)';
+    ctx.fillText('Primary shell', cx + PR*0.7, cy - PR - 8);
+    ctx.fillStyle='rgba(180,126,255,0.6)';
+    ctx.fillText('Secondary region', cx + SR*0.6, cy - SR - 6);
+    if (!sim.infiniteDilution) {
+      ctx.fillStyle='rgba(100,120,180,0.5)';
+      ctx.fillText('Bulk water', cx + DR*0.55, cy);
+    }
+  }
+}
+
+/* ── Ionic atmosphere ── */
+function drawIonicAtmosphere(acx,acy) {
+  if (sim.infiniteDilution) return;
+  const DR = sim.debyeRadius;
+  const t  = sim.time;
+  const lag= sim.lag;
+
+  // Debye sphere glow
+  const g = ctx.createRadialGradient(acx,acy,DR*0.5,acx,acy,DR);
+  g.addColorStop(0,'rgba(80,120,255,0.06)');
+  g.addColorStop(1,'transparent');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.arc(acx,acy,DR,0,Math.PI*2); ctx.fill();
+
+  // Debye ring
+  ctx.strokeStyle=`rgba(80,120,255,${0.15+0.1*Math.sin(t)})`;
+  ctx.lineWidth=1;
+  ctx.setLineDash([4,8]);
+  ctx.beginPath(); ctx.arc(acx,acy,DR,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (sim.showLabels && !sim.infiniteDilution) {
+    ctx.font='9px var(--font-mono)';
+    ctx.fillStyle='rgba(80,120,255,0.5)';
+    ctx.fillText('κ⁻¹ Debye length', acx+DR*0.7, acy+10);
+  }
+
+  // Counter-ions
+  for (const ci of sim.counterIons) {
+    const wobble = Math.sin(t*ci.speed + ci.phase)*3;
+    const ix = acx + ci.ox + wobble;
+    const iy = acy + ci.oy + Math.cos(t*ci.speed + ci.phase)*3;
+
+    drawGradientCircle(ix,iy,ci.size,'rgba(80,168,255,0.9)','rgba(20,80,200,0)');
+    glow('#4fa8ff',8);
+    ctx.fillStyle='rgba(80,168,255,0.85)';
+    ctx.beginPath(); ctx.arc(ix,iy,ci.size*0.6,0,Math.PI*2); ctx.fill();
+    noGlow();
+  }
+
+  // Lag visualization arrow
+  if (lag > 5 && sim.step >= 3) {
+    const dx = acx - sim.ion.x, dy = acy - sim.ion.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if (dist > 2) {
+      const ex = sim.ion.x + dx/dist*18;
+      const ey = sim.ion.y + dy/dist*18;
+      ctx.strokeStyle='rgba(255,107,53,0.6)';
+      ctx.lineWidth=2;
+      glow('#ff6b35',8);
+      ctx.beginPath();
+      ctx.moveTo(sim.ion.x, sim.ion.y);
+      ctx.lineTo(acx, acy);
+      ctx.stroke();
+      noGlow();
+      // Label
+      if (sim.showLabels) {
+        ctx.font='9px var(--font-mono)';
+        ctx.fillStyle='rgba(255,107,53,0.8)';
+        ctx.fillText('Lag (Δr)', (sim.ion.x+acx)/2+5, (sim.ion.y+acy)/2-5);
+      }
+    }
+  }
+}
+
+/* ── Central ion ── */
+function drawCentralIon(x,y) {
+  // Glow
+  drawGradientCircle(x,y,28,'rgba(255,80,80,0.12)','transparent');
+  glow('#ff4f4f',18);
+  drawGradientCircle(x,y,14,'#ff7070','#c02020');
+  noGlow();
+  // Label
+  ctx.fillStyle='white';
+  ctx.font='bold 13px Georgia';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('+', x, y+1);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+}
+
+/* ── Electrophoretic backflow ── */
+function drawElectrophoretic(cx,cy) {
+  if (sim.step < 4 || sim.infiniteDilution) return;
+  if (sim.fieldStrength < 0.05) return;
+  const t = sim.time;
+  const DR= sim.debyeRadius;
+  // Arrows moving right (field direction), counter-ions move left
+  // Solvent arrows (opposing ion motion) move left
+  const numArrows = 5;
+  for (let i=0; i<numArrows; i++) {
+    const yOff = (i - numArrows/2) * 22;
+    let prog = ((t * 0.4 + i*0.7) % 1);
+    // Backflow: arrows from right to left (opposing rightward ion motion)
+    const startX = cx + DR*0.9;
+    const endX   = cx - DR*0.9;
+    const px = startX + (endX-startX)*prog;
+    const py = cy + yOff;
+    const alpha = Math.sin(prog*Math.PI)*0.6;
+    ctx.fillStyle = `rgba(100,180,255,${alpha})`;
+    ctx.strokeStyle= `rgba(100,180,255,${alpha})`;
+    ctx.lineWidth=1.5;
+    // Arrow
+    ctx.beginPath();
+    ctx.moveTo(px+8,py);
+    ctx.lineTo(px-8,py);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px-8,py);
+    ctx.lineTo(px-2,py-3);
+    ctx.moveTo(px-8,py);
+    ctx.lineTo(px-2,py+3);
+    ctx.stroke();
+  }
+  if (sim.showLabels) {
+    ctx.fillStyle='rgba(100,180,255,0.7)';
+    ctx.font='9px var(--font-mono)';
+    ctx.fillText('Solvent backflow', cx-DR*0.8, cy-DR*0.45);
+  }
+}
+
+/* ── E-field arrows in background ── */
+function drawField() {
+  if (sim.fieldStrength < 0.02) return;
+  const W=canvas.width, H=canvas.height;
+  const alpha = sim.fieldStrength*0.25;
+  ctx.strokeStyle=`rgba(255,107,53,${alpha})`;
+  ctx.lineWidth=1;
+  const spacing=50;
+  for (let y=spacing/2; y<H; y+=spacing) {
+    const x1=20, x2=W-20;
+    ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2-12,y); ctx.stroke();
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(x2-12,y);
+    ctx.lineTo(x2-20,y-5);
+    ctx.moveTo(x2-12,y);
+    ctx.lineTo(x2-20,y+5);
+    ctx.stroke();
+  }
+  if (sim.showLabels) {
+    ctx.fillStyle=`rgba(255,107,53,${alpha*2})`;
+    ctx.font='10px var(--font-mono)';
+    ctx.fillText('→ Applied Electric Field E', 20, 18);
+  }
+}
+
+/* ── Conductivity bar ── */
+function drawConductivityBar() {
+  const W=canvas.width;
+  const cond = sim.conductivity;
+  const barW = 160, barH = 10;
+  const bx = W - barW - 14, by = 14;
+  ctx.fillStyle='rgba(17,21,32,0.7)';
+  ctx.fillRect(bx-8, by-16, barW+16, barH+30);
+  ctx.strokeStyle=`rgba(30,39,64,0.8)`;
+  ctx.strokeRect(bx-8,by-16,barW+16,barH+30);
+
+  // Background track
+  ctx.fillStyle='rgba(30,39,64,0.9)';
+  ctx.fillRect(bx,by,barW,barH);
+
+  // Fill
+  const col = cond > 0.7 ? '#39ff7e' : cond > 0.4 ? '#ffdd00' : '#ff4f4f';
+  glow(col,8);
+  ctx.fillStyle=col;
+  ctx.fillRect(bx,by,barW*cond,barH);
+  noGlow();
+
+  ctx.font='9px var(--font-mono)';
+  ctx.fillStyle='rgba(180,195,220,0.8)';
+  ctx.textAlign='right';
+  ctx.fillText(`Λ = ${(cond*100).toFixed(0)}%`, bx+barW, by+barH+14);
+  ctx.textAlign='left';
+  ctx.fillStyle='rgba(180,195,220,0.5)';
+  ctx.fillText(sim.infiniteDilution ? 'Λ₀ (∞ dilution)' : 'Conductivity', bx, by+barH+14);
+}
+
+/* ── Update metrics panel ── */
+function updateMetrics() {
+  const cond = sim.conductivity;
+  document.getElementById('mCond').textContent   = (cond*100).toFixed(1)+'%';
+  document.getElementById('mVel').textContent    = sim.ionVelocity.toFixed(2)+' u';
+  document.getElementById('mLag').textContent    = sim.lag.toFixed(1)+' px';
+  document.getElementById('mDebye').textContent  = sim.debyeRadius.toFixed(0)+' px';
+  document.getElementById('mShell').textContent  = sim.primaryRadius+' px';
+}
+
+/* ══════════════════════════════
+   PHYSICS UPDATE
+══════════════════════════════ */
+const DT = 1/60;
+
+function physics(dt) {
+  if (sim.dragging) return;
+  const m   = sim.ion;
+  const eff = sim.timeScale;
+  const F   = sim.fieldStrength;
+
+  // Electric force (rightward)
+  let fx = F * 60 * eff;
+  let fy = 0;
+
+  // Atmosphere lag → restoring force on ion (relaxation effect)
+  if (!sim.infiniteDilution && sim.step >= 3) {
+    const lagScale = 0.3;
+    const dx = sim.atmCenter.x - m.x;
+    const dy = sim.atmCenter.y - m.y;
+    fx += dx * lagScale * eff;
+    fy += dy * lagScale * eff;
+  }
+
+  // Electrophoretic retardation (extra drag)
+  let dragFactor = 0.85;
+  if (!sim.infiniteDilution && sim.step >= 4) {
+    dragFactor = 0.80 - sim.concentration * 0.15;
+  }
+
+  // Integrate velocity (Euler with heavy drag → terminal velocity)
+  m.vx = m.vx * dragFactor + fx * dt;
+  m.vy = m.vy * dragFactor + fy * dt;
+
+  // Speed cap
+  const spd = Math.sqrt(m.vx**2+m.vy**2);
+  const maxSpd = 3*eff;
+  if (spd > maxSpd) { m.vx *= maxSpd/spd; m.vy *= maxSpd/spd; }
+
+  // Move ion
+  m.x += m.vx;
+  m.y += m.vy;
+
+  // Keep on screen
+  const PAD=40;
+  if (m.x<PAD){m.x=PAD;m.vx=0;}
+  if (m.x>canvas.width-PAD){m.x=canvas.width-PAD;m.vx=0;}
+  if (m.y<PAD){m.y=PAD;m.vy=0;}
+  if (m.y>canvas.height-PAD){m.y=canvas.height-PAD;m.vy=0;}
+
+  // Atmosphere center lags behind ion
+  if (!sim.infiniteDilution) {
+    // Lag time constant depends on concentration & field
+    const lagTC = sim.step >= 3
+      ? Math.max(0.04, 0.2 - sim.fieldStrength * 0.1)
+      : 0.25;
+    sim.atmCenter.x += (m.x - sim.atmCenter.x) * lagTC * eff;
+    sim.atmCenter.y += (m.y - sim.atmCenter.y) * lagTC * eff;
+  } else {
+    // At infinite dilution: no lag
+    sim.atmCenter.x = m.x;
+    sim.atmCenter.y = m.y;
+  }
+}
+
+/* ══════════════════════════════
+   MAIN RENDER LOOP
+══════════════════════════════ */
+let lastTime = null;
+
+function frame(ts) {
+  if (lastTime===null) lastTime=ts;
+  const rawDt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime=ts;
+
+  if (!sim.paused) {
+    sim.time += rawDt * sim.timeScale;
+    physics(rawDt);
+  }
+
+  // Clear
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Background subtle grid
+  ctx.fillStyle='rgba(255,255,255,0.015)';
+  const gs=50;
+  for(let x=0;x<canvas.width;x+=gs) ctx.fillRect(x,0,1,canvas.height);
+  for(let y=0;y<canvas.height;y+=gs) ctx.fillRect(0,y,canvas.width,1);
+
+  // Draw in layers
+  drawField();
+  const ix=sim.ion.x, iy=sim.ion.y;
+  const ax=sim.atmCenter.x, ay=sim.atmCenter.y;
+
+  if (sim.step >= 2) drawIonicAtmosphere(ax,ay);
+  drawHydrationShells(ix,iy);
+  if (sim.step >= 4) drawElectrophoretic(ix,iy);
+  drawCentralIon(ix,iy);
+  drawConductivityBar();
+  updateMetrics();
+
+  requestAnimationFrame(frame);
+}
+
+/* ── Startup ── */
+window.addEventListener('resize', () => {
+  resize();
+});
+resize();
+setStep(1);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
