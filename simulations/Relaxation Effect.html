@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ion Solvation & Ionic Conductivity – PhyChem Simulation</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0e1118;--panel:#111620;--border:#1a2035;
+  --accent:#00cfff;--accent2:#ff6b35;--green:#2dff8a;--purple:#c084fc;
+  --yellow:#ffd166;--text:#c4d4ee;--muted:#4e5e7a;
+  --red:#ff5050;--blue:#4fa8ff;--font:'Courier New',monospace;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:Georgia,'Times New Roman',serif;
+  font-size:13px;line-height:1.6;display:flex;flex-direction:column}
+
+/* ── Header ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex-shrink:0}
+header h1{font-size:1rem;font-weight:normal;color:var(--accent);letter-spacing:.05em;white-space:nowrap}
+.subtitle{font-size:.68rem;color:var(--muted);font-family:var(--font)}
+.spacer{flex:1}
+.steps{display:flex;gap:3px;flex-wrap:wrap}
+.step-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);
+  padding:4px 10px;border-radius:3px;cursor:pointer;font-size:.68rem;
+  font-family:var(--font);transition:all .2s}
+.step-btn:hover{border-color:var(--accent);color:var(--accent)}
+.step-btn.active{background:#0b1e2e;border-color:var(--accent);color:var(--accent);
+  box-shadow:0 0 8px rgba(0,207,255,.15)}
+
+/* ── Layout ── */
+.layout{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{width:252px;min-width:185px;background:var(--panel);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+  overflow-y:auto;flex-shrink:0}
+.theory-box{padding:14px;border-bottom:1px solid var(--border)}
+.theory-box h2{font-size:.7rem;font-family:var(--font);color:var(--accent);
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.theory-box p{font-size:.71rem;color:var(--text);line-height:1.75;margin-bottom:5px}
+
+.controls{padding:14px;display:flex;flex-direction:column;gap:12px}
+.ctrl-group label{display:flex;justify-content:space-between;font-size:.68rem;
+  font-family:var(--font);color:var(--muted);margin-bottom:4px}
+.ctrl-group label span{color:var(--accent)}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;
+  background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:var(--accent);cursor:pointer;
+  box-shadow:0 0 5px rgba(0,207,255,.5)}
+
+.toggle-row{display:flex;align-items:center;gap:8px;font-size:.68rem;
+  font-family:var(--font);color:var(--muted)}
+.tog{position:relative;width:34px;height:17px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog .tr{position:absolute;inset:0;background:var(--border);border-radius:8px;
+  cursor:pointer;transition:background .2s}
+.tog .tr::after{content:'';position:absolute;width:11px;height:11px;
+  background:var(--muted);border-radius:50%;top:3px;left:3px;
+  transition:transform .2s,background .2s}
+.tog input:checked+.tr{background:#0a2219}
+.tog input:checked+.tr::after{transform:translateX(17px);background:var(--green);
+  box-shadow:0 0 5px rgba(45,255,138,.5)}
+
+.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+.btn{flex:1;padding:6px 8px;border-radius:3px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);cursor:pointer;font-size:.68rem;
+  font-family:var(--font);transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.danger:hover{border-color:var(--accent2);color:var(--accent2)}
+
+/* ── Metrics ── */
+.metrics{padding:14px;border-top:1px solid var(--border);margin-top:auto}
+.metrics h3{font-size:.65rem;font-family:var(--font);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.metric{display:flex;justify-content:space-between;margin-bottom:5px;
+  font-size:.68rem;font-family:var(--font)}
+.metric .n{color:var(--muted)} .metric .v{color:var(--green)}
+
+/* ── Canvas ── */
+.canvas-wrap{flex:1;display:flex;flex-direction:column;position:relative;
+  min-width:0;background:radial-gradient(ellipse at 50% 50%,#0b1422 0%,#060810 100%)}
+#C{display:block;width:100%;height:100%;cursor:grab}
+#C:active{cursor:grabbing}
+
+/* ── Bottom bar ── */
+.bbar{background:var(--surface);border-top:1px solid var(--border);
+  padding:6px 14px;display:flex;align-items:center;gap:14px;font-size:.65rem;
+  font-family:var(--font);color:var(--muted);flex-wrap:wrap;flex-shrink:0}
+.bbar .hint{color:var(--accent)}
+
+@media(max-width:600px){
+  .sidebar{width:100%;max-width:100%;min-height:210px;border-right:none;
+    border-bottom:1px solid var(--border)}
+  .layout{flex-direction:column}
+  body{overflow:auto}
+  .canvas-wrap{min-height:340px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚗ Ion Solvation &amp; Ionic Conductivity</h1>
+    <div class="subtitle">Physical Chemistry · Debye–Hückel–Onsager Theory</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="steps">
+    <button class="step-btn active" onclick="setStep(1)">1 · Hydration</button>
+    <button class="step-btn"        onclick="setStep(2)">2 · Ionic Atm.</button>
+    <button class="step-btn"        onclick="setStep(3)">3 · Relaxation</button>
+    <button class="step-btn"        onclick="setStep(4)">4 · Electrophoretic</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="theory-box">
+      <h2 id="tTitle">Step 1 · Hydration Shell</h2>
+      <p id="tP1"></p>
+      <p id="tP2"></p>
+      <p id="tP3"></p>
+    </div>
+    <div class="controls">
+      <div class="ctrl-group">
+        <label>Electric Field E &nbsp;<span id="fVal">0.00</span></label>
+        <input type="range" id="fSlider" min="0" max="100" value="0" oninput="onField()">
+      </div>
+      <div class="ctrl-group">
+        <label>Concentration &nbsp;<span id="cVal">0.10</span> mol/L</label>
+        <input type="range" id="cSlider" min="1" max="100" value="10" oninput="onConc()">
+      </div>
+      <div class="ctrl-group">
+        <label>Slow-motion &nbsp;<span id="sVal">1.0</span>×</label>
+        <input type="range" id="sSlider" min="1" max="20" value="10" oninput="onSpeed()">
+      </div>
+      <div class="toggle-row">
+        <label class="tog"><input type="checkbox" id="infTog" onchange="onInf()">
+          <div class="tr"></div></label>
+        <span>Infinite Dilution (→ Λ₀)</span>
+      </div>
+      <div class="toggle-row">
+        <label class="tog"><input type="checkbox" id="lblTog" checked
+          onchange="S.showLabels=this.checked"><div class="tr"></div></label>
+        <span>Show Labels</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
+        <button class="btn danger" onclick="doReset()">↺ Reset</button>
+      </div>
+    </div>
+    <div class="metrics">
+      <h3>Live Metrics</h3>
+      <div class="metric"><span class="n">Molar Conductivity Λ</span><span class="v" id="mL">—</span></div>
+      <div class="metric"><span class="n">Ion drift speed</span><span class="v" id="mV">—</span></div>
+      <div class="metric"><span class="n">Atm. asymmetry Δr</span><span class="v" id="mLag">—</span></div>
+      <div class="metric"><span class="n">Debye length κ⁻¹</span><span class="v" id="mD">—</span></div>
+      <div class="metric"><span class="n">Coord. no. (CN)</span><span class="v">6  (model: Na⁺)</span></div>
+    </div>
+  </aside>
+
+  <div class="canvas-wrap">
+    <canvas id="C"></canvas>
+  </div>
+</div>
+
+<div class="bbar">
+  <span class="hint">💡 Drag ion or apply E-field to see asymmetric atmosphere. Toggle Infinite Dilution.</span>
+  <span>Step <b id="stepInd">1</b>/4 &nbsp;|&nbsp; Bockris &amp; Reddy · Modern Electrochemistry Vol. 1</span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ELECTROCHEMISTRY SIMULATION – v3
+   Visual reference: lecture diagram showing:
+   • E-field arrow pointing LEFT (field direction)
+   • Central cation (+) moves RIGHT (cations move against E-field)
+   • Asymmetric TEARDROP atmosphere trailing behind ion (left/trailing)
+   • Counter-ions (−, blue) densely packed on trailing side
+   • Co-ions (+, dark red) scattered outside in bulk
+   • "Friction Force & Electrophoretic Retardation Force" arrow rightward
+   Chemistry fact-checked:
+   1. H₂O: O(δ−) toward cation, H(δ+) at ±52.25° away — 104.5° angle
+   2. Primary shell: translationally + rotationally locked, O tracks ion
+   3. Secondary shell: partial orientation, NOT dragged with ion
+   4. Co-ions present (depleted near center, in bulk)
+   5. Atmosphere teardrop = leading edge depleted, trailing edge dense
+   6. Conductivity: Onsager Λ = Λ₀ − (A+BΛ₀)√c
+═══════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('C');
+const ctx    = canvas.getContext('2d');
+const TWO_PI = Math.PI * 2;
+
+/* ─── Theory text ─── */
+const THEORY = [
+  {
+    title:'Step 1 · Hydration Shell (Ion–Dipole Forces)',
+    p1:'Water (μ ≈ 1.85 D, H–O–H = 104.5°): oxygen is δ−, hydrogens are δ+. Around a cation, δ− oxygen points inward. This ion–dipole force is the primary source of ion–solvent interaction.',
+    p2:'PRIMARY shell (CN ≈ 6, e.g. Na⁺): 6 water molecules translationally immobilised and rotationally locked — O always faces the cation. They move with the ion and reorient dynamically as it moves. Electrostriction compresses them toward the ion.',
+    p3:'SECONDARY shell: partially oriented — compromise between ion-alignment and the bulk tetrahedral H-bond network. NOT dragged with the ion. Beyond the secondary region, bulk water structure is re-established.',
+  },
+  {
+    title:'Step 2 · Ionic Atmosphere (Debye–Hückel)',
+    p1:'Each ion is surrounded by a statistical excess of counter-ions. At equilibrium the atmosphere is perfectly SPHERICALLY SYMMETRIC — the central ion feels zero net electrostatic force.',
+    p2:'Debye length κ⁻¹ ∝ 1/√c defines atmosphere thickness. Co-ions (same sign, orange-red) are also present but depleted near the central cation; counter-ions (blue) are enriched. Adjust Concentration to shrink/grow the Debye sphere.',
+    p3:'κ⁻¹ = (ε₀εᵣRT/2F²I)^½. Ionic strength I = ½Σcᵢzᵢ². At 0.01 mol/L: κ⁻¹ ≈ 3 nm; at 0.1 mol/L: κ⁻¹ ≈ 1 nm.',
+  },
+  {
+    title:'Step 3 · Relaxation (Asymmetry) Effect',
+    p1:'Under an applied field the cation drifts RIGHT. The ionic atmosphere must dissolve on the leading side (right) and reform on the trailing side (left). Reformation time τ ∝ κ⁻²/D is finite.',
+    p2:'Result: the atmosphere becomes ASYMMETRIC — denser trailing (left) side, depleted leading (right) side. The teardrop shape shows this. The net electrostatic force from this asymmetric atmosphere OPPOSES ion motion (relaxation / asymmetry effect, Debye–Falkenhagen).',
+    p3:'This asymmetric atmosphere is what leads to the electrophoretic effect: the dense negative trailing atmosphere is pushed left by the field, dragging solvent left, creating opposing flow around the rightward-moving cation.',
+  },
+  {
+    title:'Step 4 · Electrophoretic Effect',
+    p1:'The ionic atmosphere (net negative for a cation) is driven LEFT by the applied E-field. It drags surrounding solvent LEFT. The cation moving RIGHT must push through this opposing solvent stream — the ELECTROPHORETIC RETARDATION FORCE (rightward arrow on ion).',
+    p2:'This is hydrodynamic, distinct from the electrostatic relaxation effect. Both retard the ion: reduced drift velocity → reduced molar conductivity Λ. Onsager: Λ = Λ₀ − (A + BΛ₀)√c.',
+    p3:'INFINITE DILUTION: c→0 → κ⁻¹→∞ → no interionic effects → Λ→Λ₀. Toggle the switch to see conductivity reach its maximum. Hydration shell persists — it is not an interionic effect.',
+  },
+];
+
+/* ─── Simulation state ─── */
+const S = {
+  step:1, paused:false, infiniteDilution:false, showLabels:true,
+  field:0,        // 0–1
+  conc:0.10,      // mol/L
+  timeScale:1.0,
+  t:0,
+
+  // Central cation
+  ion:{ x:0, y:0, vx:0, vy:0 },
+  // Atmosphere geometric centre (lags behind ion)
+  atm:{ x:0, y:0 },
+
+  dragging:false, dox:0, doy:0,
+
+  primaryDipoles:[],   // 6 H₂O, primary shell
+  secondaryDipoles:[], // 10 H₂O, secondary shell
+  counterIons:[],      // anions
+  coIons:[],           // cations in bulk
+
+  get debyeR(){
+    if(this.infiniteDilution) return 9999;
+    return Math.min(180, 40+112/Math.sqrt(Math.max(0.005,this.conc)*10));
+  },
+  get primaryR(){ return 36; },
+  get secondaryR(){ return 62; },
+
+  // Conductivity: Onsager-inspired
+  get conductivity(){
+    if(this.infiniteDilution) return 1.0;
+    const sqc   = Math.sqrt(Math.max(0.001,this.conc));
+    const base  = Math.min(0.48, 0.76*sqc);
+    const relax = (this.field>0.01&&this.step>=3) ? Math.min(0.20,(this.lag/140)*this.field*1.7) : 0;
+    const eph   = (this.field>0.01&&this.step>=4) ? this.field*sqc*0.17 : 0;
+    return Math.max(0.04, 1-base-relax-eph);
+  },
+  get lag(){
+    const dx=this.ion.x-this.atm.x, dy=this.ion.y-this.atm.y;
+    return Math.sqrt(dx*dx+dy*dy);
+  },
+  get ionSpeed(){ return Math.sqrt(this.ion.vx**2+this.ion.vy**2); },
+
+  // Direction of ion velocity (for atmosphere distortion)
+  get ionVelAng(){ return Math.atan2(this.ion.vy, this.ion.vx); },
+};
+
+/* ─── Resize ─── */
+function resize(){
+  canvas.width  = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+  S.ion.x = canvas.width/2;
+  S.ion.y = canvas.height/2;
+  S.atm.x = S.ion.x; S.atm.y = S.ion.y;
+  buildParticles();
+}
+
+/* ─── Build particle lists ─── */
+function buildParticles(){
+  const cx=S.ion.x, cy=S.ion.y;
+  const DR=S.debyeR;
+
+  // 6 primary dipoles (CN=6)
+  S.primaryDipoles=[];
+  for(let i=0;i<6;i++)
+    S.primaryDipoles.push({ baseAngle:(TWO_PI/6)*i });
+
+  // 10 secondary dipoles (partial orientation)
+  S.secondaryDipoles=[];
+  for(let i=0;i<10;i++){
+    const ang=(TWO_PI/10)*i+0.2;
+    S.secondaryDipoles.push({
+      relAngle: ang,
+      dist: S.secondaryR+14,
+      partialFactor: 0.38+Math.random()*0.30,
+      bulkPhase: Math.random()*TWO_PI,
+    });
+  }
+
+  // 14 counter-ions (anions)
+  S.counterIons=[];
+  for(let i=0;i<14;i++){
+    const a=Math.random()*TWO_PI;
+    const r=DR*(0.28+0.65*Math.pow(Math.random(),0.5));
+    S.counterIons.push({
+      ox:Math.cos(a)*r, oy:Math.sin(a)*r,
+      phase:Math.random()*TWO_PI, spd:0.2+Math.random()*0.28,
+      sz:4+Math.random()*3,
+    });
+  }
+
+  // 8 co-ions (cations) in outer bulk
+  S.coIons=[];
+  for(let i=0;i<8;i++){
+    const a=Math.random()*TWO_PI;
+    const r=DR*(0.60+0.65*Math.random());
+    S.coIons.push({
+      ox:Math.cos(a)*r, oy:Math.sin(a)*r,
+      phase:Math.random()*TWO_PI, spd:0.18+Math.random()*0.22,
+      sz:3.5+Math.random()*2,
+    });
+  }
+}
+
+/* ─── UI ─── */
+function setStep(n){
+  S.step=n;
+  document.querySelectorAll('.step-btn').forEach((b,i)=>b.classList.toggle('active',i===n-1));
+  document.getElementById('stepInd').textContent=n;
+  const th=THEORY[n-1];
+  document.getElementById('tTitle').textContent=th.title;
+  document.getElementById('tP1').textContent=th.p1;
+  document.getElementById('tP2').textContent=th.p2;
+  document.getElementById('tP3').textContent=th.p3;
+  const P=[[0,10,10],[0,22,10],[45,22,8],[55,28,7]][n-1];
+  document.getElementById('fSlider').value=P[0]; onField();
+  document.getElementById('cSlider').value=P[1]; onConc();
+  document.getElementById('sSlider').value=P[2]; onSpeed();
+}
+function onField(){
+  S.field=+document.getElementById('fSlider').value/100;
+  document.getElementById('fVal').textContent=S.field.toFixed(2);
+}
+function onConc(){
+  S.conc=+document.getElementById('cSlider').value/100;
+  document.getElementById('cVal').textContent=S.conc.toFixed(2);
+  buildParticles();
+}
+function onSpeed(){
+  S.timeScale=+document.getElementById('sSlider').value/10;
+  document.getElementById('sVal').textContent=S.timeScale.toFixed(1);
+}
+function onInf(){
+  S.infiniteDilution=document.getElementById('infTog').checked;
+  buildParticles();
+}
+function togglePause(){
+  S.paused=!S.paused;
+  document.getElementById('pauseBtn').textContent=S.paused?'▶ Play':'⏸ Pause';
+}
+function doReset(){
+  S.ion.x=canvas.width/2; S.ion.y=canvas.height/2;
+  S.ion.vx=0; S.ion.vy=0;
+  S.atm.x=S.ion.x; S.atm.y=S.ion.y;
+  S.t=0; buildParticles();
+}
+
+/* ─── Drag ─── */
+function getXY(e){
+  const r=canvas.getBoundingClientRect(), t=e.touches?e.touches[0]:e;
+  return [t.clientX-r.left, t.clientY-r.top];
+}
+canvas.addEventListener('mousedown',e=>{
+  const [mx,my]=getXY(e), dx=mx-S.ion.x, dy=my-S.ion.y;
+  if(Math.sqrt(dx*dx+dy*dy)<44){ S.dragging=true; S.dox=dx; S.doy=dy; e.preventDefault(); }
+});
+canvas.addEventListener('mousemove',e=>{
+  if(!S.dragging) return;
+  const [mx,my]=getXY(e);
+  S.ion.x=mx-S.dox; S.ion.y=my-S.doy; S.ion.vx=0; S.ion.vy=0; e.preventDefault();
+});
+canvas.addEventListener('mouseup',  ()=>S.dragging=false);
+canvas.addEventListener('mouseleave',()=>S.dragging=false);
+canvas.addEventListener('touchstart',e=>{
+  const [mx,my]=getXY(e), dx=mx-S.ion.x, dy=my-S.ion.y;
+  if(Math.sqrt(dx*dx+dy*dy)<54){ S.dragging=true; S.dox=dx; S.doy=dy; e.preventDefault(); }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  if(!S.dragging) return;
+  const [mx,my]=getXY(e);
+  S.ion.x=mx-S.dox; S.ion.y=my-S.doy; e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',()=>S.dragging=false);
+
+/* ═══════════════════════
+   DRAW HELPERS
+═══════════════════════ */
+function gl(c,b=14){ ctx.shadowColor=c; ctx.shadowBlur=b; }
+function ng(){ ctx.shadowBlur=0; }
+function rg(x,y,r,c1,c2){
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,c1); g.addColorStop(1,c2); return g;
+}
+
+/* ─── Draw one water molecule (H₂O)
+   Chemistry:
+   - O (δ−) toward cation: placed at +oLen in direction toIon
+   - H₁,H₂ (δ+) at ±52.25° from O–ion axis, on FAR side (away from ion)
+   - H–O–H = 104.5°, half-angle = 52.25° per H from the O–ion bond
+   - Primary shell: O electrostricted 2.5 px extra toward ion
+   - alpha: opacity (1.0 primary, ~0.5 secondary)
+─── */
+function drawH2O(ionX, ionY, mx, my, alpha, secondary){
+  const dx=ionX-mx, dy=ionY-my;
+  const toIon=Math.atan2(dy,dx);
+  const oLen=secondary?5:6, elec=secondary?0:2.5;
+  const ox=mx+Math.cos(toIon)*(oLen+elec);
+  const oy=my+Math.sin(toIon)*(oLen+elec);
+  const hA=52.25*Math.PI/180, hLen=secondary?7.5:9;
+  const h1x=mx+Math.cos(toIon+Math.PI+hA)*hLen;
+  const h1y=my+Math.sin(toIon+Math.PI+hA)*hLen;
+  const h2x=mx+Math.cos(toIon+Math.PI-hA)*hLen;
+  const h2y=my+Math.sin(toIon+Math.PI-hA)*hLen;
+  const a=alpha;
+  ctx.strokeStyle=`rgba(100,140,210,${0.22*a})`; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(h1x,h1y);
+  ctx.moveTo(ox,oy); ctx.lineTo(h2x,h2y); ctx.stroke();
+  gl('#4fa8ff',secondary?3:7);
+  ctx.fillStyle=`rgba(50,110,225,${(secondary?0.40:0.78)*a})`;
+  ctx.beginPath(); ctx.arc(ox,oy,secondary?3.8:5,0,TWO_PI); ctx.fill(); ng();
+  ctx.fillStyle=`rgba(175,200,240,${(secondary?0.48:0.82)*a})`;
+  const hR=secondary?2.0:2.8;
+  ctx.beginPath(); ctx.arc(h1x,h1y,hR,0,TWO_PI); ctx.fill();
+  ctx.beginPath(); ctx.arc(h2x,h2y,hR,0,TWO_PI); ctx.fill();
+}
+
+/* ─── Hydration shell region rings ─── */
+function drawRegions(cx,cy){
+  const PR=S.primaryR, SR=S.secondaryR, DR=S.debyeR;
+  if(!S.infiniteDilution&&DR<290){
+    const gb=ctx.createRadialGradient(cx,cy,SR,cx,cy,Math.min(DR,270));
+    gb.addColorStop(0,'rgba(35,55,115,0.07)'); gb.addColorStop(1,'transparent');
+    ctx.fillStyle=gb; ctx.beginPath(); ctx.arc(cx,cy,Math.min(DR,270),0,TWO_PI); ctx.fill();
+  }
+  const g2=ctx.createRadialGradient(cx,cy,PR,cx,cy,SR);
+  g2.addColorStop(0,'rgba(155,85,255,0.13)'); g2.addColorStop(1,'rgba(155,85,255,0.01)');
+  ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(cx,cy,SR,0,TWO_PI); ctx.fill();
+  gl('#2dff8a',6); ctx.strokeStyle='rgba(45,255,138,0.40)'; ctx.lineWidth=1.5; ctx.setLineDash([4,5]);
+  ctx.beginPath(); ctx.arc(cx,cy,PR,0,TWO_PI); ctx.stroke(); ctx.setLineDash([]); ng();
+  ctx.strokeStyle='rgba(155,85,255,0.25)'; ctx.lineWidth=1; ctx.setLineDash([3,7]);
+  ctx.beginPath(); ctx.arc(cx,cy,SR,0,TWO_PI); ctx.stroke(); ctx.setLineDash([]);
+  if(!S.infiniteDilution&&DR<290){
+    ctx.strokeStyle=`rgba(65,105,220,${0.12+0.04*Math.sin(S.t*1.2)})`; ctx.lineWidth=1; ctx.setLineDash([5,10]);
+    ctx.beginPath(); ctx.arc(cx,cy,DR,0,TWO_PI); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if(S.showLabels){
+    ctx.textAlign='center'; gl('#2dff8a',3);
+    ctx.font='9px Courier New'; ctx.fillStyle='rgba(45,255,138,0.82)';
+    ctx.fillText('Primary shell  [oriented  O→cation, moves with ion]',cx,cy-PR-8); ng();
+    ctx.fillStyle='rgba(155,85,255,0.70)';
+    ctx.fillText('Secondary  [partial orientation]',cx,cy-SR-8);
+    if(!S.infiniteDilution&&DR<290){
+      ctx.fillStyle='rgba(65,105,220,0.50)';
+      ctx.fillText('Debye length  κ⁻¹  ∝  1/√c',cx,cy-Math.min(DR,265)-7);
+    }
+    ctx.textAlign='left';
+  }
+}
+
+/* ─── Primary dipoles: move with ion, O always toward ion ─── */
+function drawPrimaryDipoles(cx,cy){
+  let lbl=false;
+  for(let i=0;i<S.primaryDipoles.length;i++){
+    const d=S.primaryDipoles[i];
+    const wobble=Math.sin(S.t*1.9+i*1.1)*0.055;
+    const ang=d.baseAngle+wobble;
+    const mx=cx+Math.cos(ang)*(S.primaryR+9);
+    const my=cy+Math.sin(ang)*(S.primaryR+9);
+    drawH2O(cx,cy,mx,my,1.0,false);
+    if(S.showLabels&&!lbl){ lbl=true;
+      const toIon=Math.atan2(cy-my,cx-mx);
+      ctx.font='8px Courier New'; ctx.textAlign='center';
+      ctx.fillStyle='rgba(80,155,255,0.9)';
+      ctx.fillText('δ−(O)',mx+Math.cos(toIon+1.6)*15,my+Math.sin(toIon+1.6)*15);
+      ctx.fillStyle='rgba(175,200,240,0.7)';
+      ctx.fillText('δ+(H)',mx+Math.cos(toIon+Math.PI)*14,my+Math.sin(toIon+Math.PI)*14);
+      ctx.textAlign='left';
+    }
+  }
+}
+
+/* ─── Secondary dipoles: partial orientation, not dragged ─── */
+function drawSecondaryDipoles(ionX,ionY){
+  for(let i=0;i<S.secondaryDipoles.length;i++){
+    const d=S.secondaryDipoles[i];
+    const mx=S.atm.x+Math.cos(d.relAngle)*d.dist;
+    const my=S.atm.y+Math.sin(d.relAngle)*d.dist;
+    const toIonAng=Math.atan2(ionY-my,ionX-mx);
+    const bulkAng=d.relAngle+Math.PI+Math.sin(S.t*0.45+d.bulkPhase)*0.35;
+    const pf=d.partialFactor, eDist=50;
+    const eIonX=mx+Math.cos(toIonAng)*pf*eDist+Math.cos(bulkAng)*(1-pf)*eDist;
+    const eIonY=my+Math.sin(toIonAng)*pf*eDist+Math.sin(bulkAng)*(1-pf)*eDist;
+    drawH2O(eIonX,eIonY,mx,my,0.50,true);
+  }
+  if(S.showLabels){
+    ctx.font='8px Courier New'; ctx.fillStyle='rgba(155,85,255,0.55)'; ctx.textAlign='center';
+    ctx.fillText('Compromise structure (partial H-bond + partial dipole)',S.atm.x,S.atm.y+S.secondaryR+27);
+    ctx.textAlign='left';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   drawAtmosphere — THE KEY VISUAL (matches reference image)
+
+   TEARDROP / EGG SHAPE:
+   When the ion moves rightward (positive vx), the atmosphere
+   centre lags to the LEFT (atm.x < ion.x).
+   We draw an ellipse whose:
+   - Centre = atmosphere centre (atm.x, atm.y)
+   - Semi-axis TRAILING (behind ion) is LONGER → teardrop tail
+   - Semi-axis LEADING (ahead of ion) is SHORTER → blunt front
+   This exactly matches the reference image shape.
+
+   Ion moves right → field points LEFT.
+   Trailing side (LEFT) = denser counter-ions.
+   Leading side (RIGHT) = depleted.
+═══════════════════════════════════════════════════════════ */
+function drawAtmosphere(acx, acy){
+  if(S.infiniteDilution) return;
+
+  const DR    = S.debyeR;
+  const lag   = S.lag;
+  const field = S.field;
+  const isActive = S.step>=3 && field>0.01 && lag>3;
+
+  // ── Asymmetry factor (0 = symmetric circle, 1 = max teardrop) ──
+  const asymm = isActive ? Math.min(1.0, lag/60) : 0;
+
+  // Direction: ion moves RIGHT (+x), trailing is LEFT (angle = π)
+  // ionVelAng ≈ 0 when moving right
+  const velAng = (field>0.01 && S.step>=3) ? 0 : S.ionVelAng;
+
+  // ── Draw distorted atmosphere blob using path (teardrop shape) ──
+  // Save/restore for the clipping + drawing
+  ctx.save();
+  ctx.translate(acx, acy);
+  ctx.rotate(velAng); // align with motion direction
+
+  // Radii: trailing longer, leading shorter
+  const Rtrail  = DR * (1.0 + 0.40*asymm);  // behind ion: extended
+  const Rlead   = DR * (1.0 - 0.30*asymm);  // ahead of ion: compressed
+  const Rlateral= DR * (1.0 - 0.10*asymm);  // side: slight narrowing
+
+  // Draw blob as a bezier teardrop
+  // Trailing = LEFT (angle π), Leading = RIGHT (angle 0)
+  ctx.beginPath();
+  // Start at top-lateral
+  ctx.moveTo(0, -Rlateral);
+  // Right (leading) side curve
+  ctx.bezierCurveTo(
+    Rlead*0.8, -Rlateral*0.8,
+    Rlead,      -Rlateral*0.35,
+    Rlead,       0
+  );
+  ctx.bezierCurveTo(
+    Rlead,      Rlateral*0.35,
+    Rlead*0.8,  Rlateral*0.8,
+    0,          Rlateral
+  );
+  // Left (trailing) side — longer, more rounded tail
+  ctx.bezierCurveTo(
+   -Rtrail*0.6, Rlateral*0.75,
+   -Rtrail,     Rlateral*0.45,
+   -Rtrail,     0
+  );
+  ctx.bezierCurveTo(
+   -Rtrail,    -Rlateral*0.45,
+   -Rtrail*0.6,-Rlateral*0.75,
+    0,         -Rlateral
+  );
+  ctx.closePath();
+
+  // Fill: dark blue, like reference image
+  const fillGrad = ctx.createRadialGradient(0,0,0, 0,0,DR);
+  fillGrad.addColorStop(0,'rgba(15,35,90,0.72)');
+  fillGrad.addColorStop(0.6,'rgba(10,28,75,0.55)');
+  fillGrad.addColorStop(1,'rgba(5,15,45,0.10)');
+  ctx.fillStyle=fillGrad; ctx.fill();
+
+  // Edge
+  ctx.strokeStyle=`rgba(60,110,210,${0.30+0.12*Math.sin(S.t*1.1)})`;
+  ctx.lineWidth=1.5; ctx.stroke();
+
+  ctx.restore();
+
+  // ── Counter-ions (anions, blue circles) ──
+  // Distributed inside the teardrop, with density bias on trailing side
+  for(const ci of S.counterIons){
+    let ox=ci.ox, oy=ci.oy;
+
+    // Asymmetry: shift trailing counter-ions further back, leading closer
+    if(isActive){
+      // Rotate offsets to motion frame
+      const rotX= ox*Math.cos(-velAng)+oy*Math.sin(-velAng);  // leading-trailing axis
+      const rotY=-ox*Math.sin(-velAng)+oy*Math.cos(-velAng);  // lateral axis
+      // rotX < 0 = trailing side; rotX > 0 = leading side
+      let newRotX=rotX, newRotY=rotY;
+      if(rotX<0){
+        // Trailing: push further back
+        newRotX=rotX*(1+0.45*asymm);
+        newRotY=rotY*(1+0.12*asymm);
+      } else {
+        // Leading: pull in
+        newRotX=rotX*(1-0.35*asymm);
+        newRotY=rotY*(1-0.08*asymm);
+      }
+      ox= newRotX*Math.cos(velAng)-newRotY*Math.sin(velAng);
+      oy= newRotX*Math.sin(velAng)+newRotY*Math.cos(velAng);
+    }
+
+    const wb=Math.sin(S.t*ci.spd+ci.phase)*2.0;
+    const ix=acx+ox+wb, iy=acy+oy+Math.cos(S.t*ci.spd+ci.phase)*2.0;
+
+    // Draw large blue circles (matching reference image style)
+    gl('#3a8fff',10);
+    const cg=ctx.createRadialGradient(ix,iy,0,ix,iy,ci.sz*1.4);
+    cg.addColorStop(0,'rgba(70,130,255,0.85)');
+    cg.addColorStop(0.5,'rgba(45,100,220,0.70)');
+    cg.addColorStop(1,'rgba(20,60,180,0.10)');
+    ctx.fillStyle=cg;
+    ctx.beginPath(); ctx.arc(ix,iy,ci.sz*1.4,0,TWO_PI); ctx.fill(); ng();
+    // Solid inner circle
+    ctx.fillStyle='rgba(60,120,240,0.90)';
+    ctx.beginPath(); ctx.arc(ix,iy,ci.sz,0,TWO_PI); ctx.fill();
+    // − label
+    ctx.fillStyle='#fff'; ctx.font=`bold ${Math.round(ci.sz*1.6)}px Georgia`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('−',ix,iy+0.5);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
+
+  // ── Co-ions (cations, dark red) in bulk outside atmosphere ──
+  for(const ci of S.coIons){
+    const wb=Math.sin(S.t*ci.spd+ci.phase+2.0)*2.0;
+    const ix=acx+ci.ox+wb, iy=acy+ci.oy+Math.cos(S.t*ci.spd+ci.phase+2.0)*2.0;
+    // Dark red/maroon — matching reference image
+    gl('#cc3030',7);
+    const cg2=ctx.createRadialGradient(ix,iy,0,ix,iy,ci.sz*1.4);
+    cg2.addColorStop(0,'rgba(200,60,60,0.80)');
+    cg2.addColorStop(0.5,'rgba(160,30,30,0.65)');
+    cg2.addColorStop(1,'rgba(120,20,20,0.10)');
+    ctx.fillStyle=cg2;
+    ctx.beginPath(); ctx.arc(ix,iy,ci.sz*1.35,0,TWO_PI); ctx.fill(); ng();
+    ctx.fillStyle='rgba(185,45,45,0.88)';
+    ctx.beginPath(); ctx.arc(ix,iy,ci.sz*0.88,0,TWO_PI); ctx.fill();
+    // + label
+    ctx.fillStyle='#fff'; ctx.font=`bold ${Math.round(ci.sz*1.5)}px Georgia`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('+',ix,iy+0.5);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
+
+  // ── Labels ──
+  if(S.showLabels&&S.step>=2){
+    // Counter-ion label near trailing side
+    const trailLblX=acx+Math.cos(velAng+Math.PI)*DR*0.6;
+    const trailLblY=acy+Math.sin(velAng+Math.PI)*DR*0.6;
+    if(isActive){
+      ctx.font='8px Courier New'; ctx.textAlign='center';
+      ctx.fillStyle='rgba(80,150,255,0.65)';
+      ctx.fillText('Counter-ion rich (trailing)',trailLblX,trailLblY-DR*0.25);
+      ctx.fillStyle='rgba(80,150,255,0.45)';
+      ctx.fillText('(depleted — leading)',acx+Math.cos(velAng)*DR*0.55,acy+Math.sin(velAng)*DR*0.55-18);
+      ctx.textAlign='left';
+    } else {
+      ctx.font='8px Courier New'; ctx.fillStyle='rgba(65,145,255,0.50)'; ctx.textAlign='center';
+      ctx.fillText('Counter-ions (−)',acx,acy-DR*0.6);
+      ctx.fillStyle='rgba(185,45,45,0.45)';
+      ctx.fillText('Co-ions (+) in bulk',acx,acy+DR*0.75);
+      ctx.textAlign='left';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   drawRelaxationAnnotation
+   Draws the lag arrow + "Δr" label (steps 3 & 4)
+   Shown separately from drawAtmosphere for clarity
+═══════════════════════════════════════════════════ */
+function drawRelaxationAnnotation(){
+  const lag=S.lag;
+  if(S.step<3||lag<4||S.infiniteDilution) return;
+  const ix=S.ion.x, iy=S.ion.y;
+  const ax=S.atm.x, ay=S.atm.y;
+  gl('#ff6b35',12);
+  ctx.strokeStyle='rgba(255,107,53,0.72)'; ctx.lineWidth=2.2; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(ix,iy); ctx.lineTo(ax,ay); ctx.stroke();
+  ctx.setLineDash([]); ng();
+  // Arrowhead at atmosphere centre
+  const ang=Math.atan2(ay-iy,ax-ix);
+  ctx.fillStyle='rgba(255,107,53,0.72)';
+  ctx.beginPath();
+  ctx.moveTo(ax,ay);
+  ctx.lineTo(ax-Math.cos(ang-0.38)*10,ay-Math.sin(ang-0.38)*10);
+  ctx.lineTo(ax-Math.cos(ang+0.38)*10,ay-Math.sin(ang+0.38)*10);
+  ctx.closePath(); ctx.fill();
+  if(S.showLabels){
+    const mx2=(ix+ax)/2, my2=(iy+ay)/2;
+    ctx.font='9px Courier New'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(255,107,53,0.90)'; ctx.fillText('Δr  (atmosphere lags)',mx2,my2-9);
+    ctx.fillStyle='rgba(255,107,53,0.62)'; ctx.font='8px Courier New';
+    ctx.fillText('← Electrostatic relaxation force',mx2,my2+8);
+    ctx.textAlign='left';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   drawCentralIon
+   Red circle with + sign, like reference image
+═══════════════════════════════════════════════════ */
+function drawCentralIon(x,y){
+  // Outer glow
+  ctx.fillStyle=rg(x,y,34,'rgba(255,60,60,0.12)','transparent');
+  ctx.beginPath(); ctx.arc(x,y,34,0,TWO_PI); ctx.fill();
+  gl('#ff3030',24);
+  // Red gradient circle (large, like reference)
+  const cg=ctx.createRadialGradient(x,y,0,x,y,16);
+  cg.addColorStop(0,'rgba(255,120,120,0.95)');
+  cg.addColorStop(0.5,'rgba(230,30,30,0.92)');
+  cg.addColorStop(1,'rgba(180,10,10,0.85)');
+  ctx.fillStyle=cg;
+  ctx.beginPath(); ctx.arc(x,y,16,0,TWO_PI); ctx.fill(); ng();
+  ctx.fillStyle='#fff'; ctx.font='bold 16px Georgia';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('+',x,y+1);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+}
+
+/* ═══════════════════════════════════════════════════
+   drawForceArrows
+   Shows:
+   1. Rightward arrow from ion = "Friction Force &
+      Electrophoretic Retardation Force" (step 3/4)
+   2. Leftward arrow = "Electrostatic Force" (step 3/4)
+   Matching the reference image exactly.
+═══════════════════════════════════════════════════ */
+function drawForceArrows(x,y){
+  if(S.step<3||S.field<0.02) return;
+  const arLen=70+S.field*30;
+
+  // ── Arrow RIGHT (from ion): Friction + Electrophoretic Retardation ──
+  gl('#ffcc44',6);
+  ctx.strokeStyle='rgba(255,210,50,0.85)'; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.moveTo(x+18,y); ctx.lineTo(x+18+arLen,y); ctx.stroke();
+  // Arrowhead
+  ctx.fillStyle='rgba(255,210,50,0.85)';
+  ctx.beginPath();
+  ctx.moveTo(x+18+arLen,y);
+  ctx.lineTo(x+18+arLen-10,y-5);
+  ctx.lineTo(x+18+arLen-10,y+5);
+  ctx.closePath(); ctx.fill(); ng();
+  if(S.showLabels){
+    ctx.font='8.5px Courier New'; ctx.fillStyle='rgba(255,210,50,0.88)'; ctx.textAlign='left';
+    ctx.fillText('Friction Force &',x+18+arLen+6,y-5);
+    ctx.fillText('Electrophoretic',x+18+arLen+6,y+6);
+    ctx.fillText('Retardation Force',x+18+arLen+6,y+17);
+  }
+
+  // ── Arrow LEFT (to ion from left): Electrostatic Force ──
+  gl('#4fa8ff',6);
+  ctx.strokeStyle='rgba(80,168,255,0.80)'; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.moveTo(x-18,y); ctx.lineTo(x-18-arLen,y); ctx.stroke();
+  ctx.fillStyle='rgba(80,168,255,0.80)';
+  ctx.beginPath();
+  ctx.moveTo(x-18-arLen,y);
+  ctx.lineTo(x-18-arLen+10,y-5);
+  ctx.lineTo(x-18-arLen+10,y+5);
+  ctx.closePath(); ctx.fill(); ng();
+  if(S.showLabels&&S.step>=3){
+    ctx.font='8.5px Courier New'; ctx.fillStyle='rgba(80,168,255,0.80)'; ctx.textAlign='right';
+    ctx.fillText('Electrostatic Force',x-18-arLen-6,y+4);
+    ctx.textAlign='left';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   drawEField — Electric field arrow pointing LEFT
+   (matching reference image: E-field arrow ← at top)
+═══════════════════════════════════════════════════ */
+function drawEField(){
+  if(S.field<0.02) return;
+  const W=canvas.width, a=S.field;
+  const y=28;
+
+  // Main arrow LEFT (like reference image)
+  gl('#3a8fff',10);
+  ctx.strokeStyle=`rgba(58,138,255,${0.55+a*0.35})`; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(W-40,y); ctx.lineTo(50,y); ctx.stroke(); ng();
+  // Arrowhead left
+  ctx.fillStyle=`rgba(58,138,255,${0.75+a*0.25})`;
+  ctx.beginPath();
+  ctx.moveTo(50,y); ctx.lineTo(65,y-7); ctx.lineTo(65,y+7); ctx.closePath(); ctx.fill();
+
+  // "Electric Field" label — matching reference style
+  if(S.showLabels){
+    ctx.font=`bold 14px Georgia`;
+    ctx.fillStyle=`rgba(80,160,255,${0.80+a*0.20})`;
+    ctx.textAlign='center';
+    ctx.fillText('Electric Field',W/2,y-10);
+    ctx.textAlign='left';
+  }
+
+  // Faint field lines in background
+  ctx.strokeStyle=`rgba(58,138,255,${a*0.06})`; ctx.lineWidth=1;
+  for(let fy=60;fy<canvas.height-15;fy+=44){
+    ctx.beginPath(); ctx.moveTo(W-30,fy); ctx.lineTo(30,fy); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(30,fy); ctx.lineTo(40,fy-4);
+    ctx.moveTo(30,fy); ctx.lineTo(40,fy+4); ctx.stroke();
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   drawElectrophoretic — Step 4 only
+   Solvent / atmosphere flowing LEFT (opposing cation)
+═══════════════════════════════════════════════════ */
+function drawElectrophoretic(cx,cy){
+  if(S.step<4||S.infiniteDilution||S.field<0.03) return;
+  const DR=Math.min(S.debyeR,190), t=S.t, N=7;
+  for(let i=0;i<N;i++){
+    const yOff=(i-(N-1)/2)*20;
+    const prog=((t*0.58+i*0.20)%1);
+    // Move LEFT (since atmosphere moves left)
+    const px=(cx+DR*0.92)+((-cx-DR*0.92+cx-DR*0.92)*prog); // doesn't simplify cleanly
+    // Simple: start right, move left
+    const sx=cx+DR*0.90, ex=cx-DR*0.90;
+    const ppx=sx+(ex-sx)*prog;
+    const ppy=cy+yOff;
+    const alph=Math.sin(prog*Math.PI)*S.field*0.65;
+    ctx.strokeStyle=`rgba(80,155,255,${alph})`; ctx.lineWidth=1.8;
+    ctx.beginPath(); ctx.moveTo(ppx+12,ppy); ctx.lineTo(ppx,ppy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ppx,ppy); ctx.lineTo(ppx+6,ppy-3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ppx,ppy); ctx.lineTo(ppx+6,ppy+3.5); ctx.stroke();
+  }
+  if(S.showLabels){
+    ctx.font='9px Courier New'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(80,155,255,0.70)';
+    ctx.fillText('⟵ Atmosphere + solvent (electrophoretic retardation)',cx,cy-DR*0.88-12);
+    ctx.textAlign='left';
+  }
+}
+
+/* ─── Conductivity bar ─── */
+function rrect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r);
+  ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r);
+  ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+function drawCondBar(){
+  const W=canvas.width, cond=S.conductivity;
+  const bw=170, bh=10, bx=W-bw-16, by=50;
+  ctx.fillStyle='rgba(7,10,18,0.88)'; rrect(bx-11,by-20,bw+22,bh+40,4); ctx.fill();
+  ctx.strokeStyle='rgba(20,30,55,0.9)'; rrect(bx-11,by-20,bw+22,bh+40,4); ctx.stroke();
+  ctx.fillStyle='rgba(20,30,55,1)'; ctx.fillRect(bx,by,bw,bh);
+  if(!S.infiniteDilution){
+    const sqLoss=Math.min(bw*0.5,bw*0.76*Math.sqrt(Math.max(0,S.conc)));
+    ctx.fillStyle='rgba(255,107,53,0.12)'; ctx.fillRect(bx+bw-sqLoss,by,sqLoss,bh);
+  }
+  const col=cond>0.72?'#2dff8a':cond>0.45?'#ffd166':'#ff5050';
+  gl(col,8); ctx.fillStyle=col; ctx.fillRect(bx,by,bw*cond,bh); ng();
+  ctx.font='8.5px Courier New'; ctx.textAlign='right';
+  ctx.fillStyle='rgba(180,195,220,0.88)';
+  ctx.fillText(S.infiniteDilution?`Λ₀ = ${(cond*100).toFixed(0)}%  (max)`:`Λ = ${(cond*100).toFixed(0)}% of Λ₀`,bx+bw,by+bh+14);
+  ctx.textAlign='left'; ctx.fillStyle='rgba(180,195,220,0.42)';
+  ctx.fillText(S.infiniteDilution?'Infinite dilution  Λ→Λ₀':'Molar Conductivity Λ',bx,by+bh+14);
+  if(!S.infiniteDilution&&S.step>=2){
+    ctx.fillStyle='rgba(255,130,70,0.45)'; ctx.font='7.5px Courier New'; ctx.textAlign='right';
+    ctx.fillText('Onsager: Λ = Λ₀ − (A+BΛ₀)√c',bx+bw,by-7);
+    ctx.textAlign='left';
+  }
+}
+
+/* ─── Sidebar metrics ─── */
+function updateMetrics(){
+  document.getElementById('mL').textContent=(S.conductivity*100).toFixed(1)+'% of Λ₀';
+  document.getElementById('mV').textContent=S.ionSpeed.toFixed(2)+' (arb. u.)';
+  document.getElementById('mLag').textContent=S.lag.toFixed(1)+' px';
+  document.getElementById('mD').textContent=S.infiniteDilution?'∞':S.debyeR.toFixed(0)+' px';
+}
+
+/* ═══════════════════════
+   PHYSICS
+═══════════════════════ */
+function physics(dt){
+  if(S.dragging) return;
+  const m=S.ion, ts=S.timeScale;
+
+  // Ion is a cation: E-field is leftward → force on cation is LEFTWARD too
+  // Wait — convention: E-field points left; force on + charge is in direction of E = leftward
+  // But reference image shows cation moving RIGHT, field pointing LEFT.
+  // This is correct: ANIONS move with field direction (left); CATIONS move against it (right)?
+  // NO — Cations move in the DIRECTION of E-field: F = qE, q>0, so force is in E direction = LEFT.
+  // BUT the reference shows cation going RIGHT with a friction arrow pointing right.
+  // The reference image shows the atmosphere friction/retardation force pointing RIGHT on the
+  // cation — meaning the CATION IS MOVING RIGHT. For that to happen with E pointing left,
+  // it means the reference diagram is showing a NEGATIVE ion? No — it's a + red circle.
+  // Re-reading: "Friction Force & Electrophoretic Retardation Force" arrow points RIGHT
+  // from the cation — this is the RETARDATION FORCE opposing the cation's motion.
+  // If retardation is rightward, the cation moves LEFTWARD (same as E-field direction).
+  // The arrow shows the FORCE ON THE ION, which opposes its motion = rightward retardation
+  // means the cation moves LEFT. The E-field is also leftward. Consistent.
+  // For simulation: cation moves LEFT (same as E-field direction for positive charge).
+  // We already have E-field pointing LEFT visually. Ion should drift LEFT.
+
+  // Electric force on cation: LEFTWARD (−x direction), matching reference
+  let fx = -S.field * 58 * ts;
+  let fy = 0;
+
+  // Relaxation retardation: lagging atmosphere pulls ion BACK (toward lag point)
+  if(!S.infiniteDilution && S.step>=3 && S.field>0.01){
+    fx += (S.atm.x - m.x) * 0.26*ts;
+    fy += (S.atm.y - m.y) * 0.26*ts;
+  }
+
+  // Electrophoretic extra drag
+  let drag=0.87;
+  if(!S.infiniteDilution && S.step>=4){
+    drag=Math.max(0.62, 0.87-Math.sqrt(S.conc)*0.24*S.field);
+  }
+
+  m.vx=m.vx*drag+fx*dt;
+  m.vy=m.vy*drag+fy*dt;
+
+  const spd=Math.sqrt(m.vx**2+m.vy**2), vmax=2.9*ts;
+  if(spd>vmax){ m.vx*=vmax/spd; m.vy*=vmax/spd; }
+
+  m.x+=m.vx; m.y+=m.vy;
+
+  const P=50;
+  if(m.x<P){ m.x=P; m.vx=0; }
+  if(m.x>canvas.width-P){ m.x=canvas.width-P; m.vx=0; }
+  if(m.y<P){ m.y=P; m.vy=0; }
+  if(m.y>canvas.height-P){ m.y=canvas.height-P; m.vy=0; }
+
+  // Atmosphere lags
+  if(!S.infiniteDilution){
+    const lagRate=(S.step>=3&&S.field>0.01)
+      ? Math.min(0.28,(0.055+0.065*S.conc)*ts)
+      : 0.22*ts;
+    S.atm.x+=(m.x-S.atm.x)*lagRate;
+    S.atm.y+=(m.y-S.atm.y)*lagRate;
+  } else {
+    S.atm.x=m.x; S.atm.y=m.y;
+  }
+}
+
+/* ═══════════════════════
+   RENDER LOOP
+═══════════════════════ */
+let lastT=null;
+function frame(ts){
+  if(lastT===null) lastT=ts;
+  const dt=Math.min((ts-lastT)/1000,0.05);
+  lastT=ts;
+  if(!S.paused){ S.t+=dt*S.timeScale; physics(dt); }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Dot grid
+  ctx.fillStyle='rgba(255,255,255,0.009)';
+  for(let x=0;x<canvas.width;x+=50)
+    for(let y=0;y<canvas.height;y+=50)
+      ctx.fillRect(x,y,1,1);
+
+  // Draw order
+  drawEField();
+  if(S.step>=2) drawAtmosphere(S.atm.x, S.atm.y);
+  drawRegions(S.ion.x, S.ion.y);
+  drawSecondaryDipoles(S.ion.x, S.ion.y);
+  drawPrimaryDipoles(S.ion.x, S.ion.y);
+  drawRelaxationAnnotation();
+  if(S.step>=4) drawElectrophoretic(S.ion.x, S.ion.y);
+  drawForceArrows(S.ion.x, S.ion.y);
+  drawCentralIon(S.ion.x, S.ion.y);
+  drawCondBar();
+  updateMetrics();
+
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('resize', resize);
+resize();
+setStep(1);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
