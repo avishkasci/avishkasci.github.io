@@ -114,10 +114,46 @@ function drawAxis(){
 
 function update(){
 
-  let A0=parseFloat(document.getElementById("A0").value);
-  let k=parseFloat(document.getElementById("k").value);
-  let prob=parseFloat(document.getElementById("prob").value);
-  let order=document.getElementById("order").value;
+  // Reaction mechanisms based on order
+
+if(order == 0){
+  if(Math.random() < k*0.01){
+    let alive = particles.filter(p=>p.alive);
+    if(alive.length > 0){
+      alive[Math.floor(Math.random()*alive.length)].alive = false;
+    }
+  }
+}
+
+if(order == 1){
+  for(let i=0;i<particles.length;i++){
+    let p = particles[i];
+    if(p.alive && Math.random() < k*0.005){
+      p.alive = false;
+    }
+  }
+}
+
+if(order == 2){
+  for(let i=0;i<particles.length;i++){
+    let p = particles[i];
+    if(!p.alive) continue;
+
+    for(let j=i+1;j<particles.length;j++){
+      let q = particles[j];
+      if(!q.alive) continue;
+
+      let dx = p.x - q.x;
+      let dy = p.y - q.y;
+
+      if(dx*dx + dy*dy < 25){
+        if(Math.random() < prob){
+          q.alive = false;
+        }
+      }
+    }
+  }
+}e;
 
   // Gas simulation
   gctx.clearRect(0,0,400,300);
